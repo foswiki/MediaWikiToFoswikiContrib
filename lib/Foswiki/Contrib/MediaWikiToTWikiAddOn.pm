@@ -29,8 +29,10 @@ sub main {
   my $help = 0;
   my %args = (
     debug => 0,
+    debug => 0,
     defaultWeb=>'_default',
     dry => 0,
+    cumulative => 0,
     excludePattern => '',
     fileName => '',
     images=>'',
@@ -48,6 +50,7 @@ sub main {
   GetOptions(
     "debug|d+" => \$args{debug},
     "dry" => \$args{dry},
+    "cumulative" => \$args{cumulative},
     "file|f:s" => \$args{fileName},
     "help|?" => \$help,
     "max|m:i" => \$args{maxPages},
@@ -55,6 +58,7 @@ sub main {
     "exclude:s" => \$args{excludePattern},
     "include:s" => \$args{includePattern},
     "match:s" => \$args{matchPattern},
+    "cat:s" => \$args{catPattern},
     "lang:s" => \$args{language},
     "namespace|n:s" => \$args{namespace},
     "webmap:s" => \$args{webMapString},

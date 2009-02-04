@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2007 Michael Daum http://wikiring.de
+# Copyright (C) 2006-2008 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -69,6 +69,7 @@ sub new {
     excludePattern=>'',
     includePattern=>'',
     matchPattern=> '',
+    catPattern=> '',
     namespace=>'',
     topicMapString=>'',
     webMapString=>'',
@@ -195,7 +196,7 @@ sub createWeb {
   my $dataDir = $TWiki::cfg{DataDir}.$parentWeb.'/'.$webName;
   unless (-d $dataDir) {
     if ($this->{dry}) {
-      $this->writeDebug("would create directory $dataDir");
+      #$this->writeDebug("would create directory $dataDir");
     } else {
       mkdir $dataDir or die "can't create $dataDir: $!";
     }
@@ -205,7 +206,7 @@ sub createWeb {
   my $pubDir = $TWiki::cfg{PubDir}.'/'.$parentWeb.'/'.$webName;
   unless (-d $pubDir) {
     if ($this->{dry}) {
-      $this->writeDebug("would create directory $pubDir");
+      #$this->writeDebug("would create directory $pubDir");
     } else {
       mkdir $pubDir or die "can't create $pubDir: $!";
     }
@@ -274,32 +275,61 @@ sub convert {
       next;
     }
 
-    if ($this->{includePattern} && $mwTitle !~ /$this->{includePattern}/ ||
-	$this->{excludePattern} && $mwTitle =~ /$this->{excludePattern}/) {
-      #$this->writeDebug("skipping article '$mwTitle'");
+    my $isAllowed = 0;
+
+    if ($this->{includePattern} && $mwTitle =~ /$this->{includePattern}/) {
+      $isAllowed = 1;
+    }
+
+    if ($this->{excludePattern} && $mwTitle =~ /$this->{excludePattern}/) {
+      $this->writeDebug("disallowed title '$mwTitle'");
       next;
     }
-    if ($this->{namespace}) {
+
+    if (!$isAllowed && $this->{namespace}) {
       my $namespace = $page->namespace || '';
-      if ($namespace ne $this->{namespace}) {
-	#$this->writeDebug("skipping namespace '$namespace'");
-	next;
-      } else {
-	$this->writeDebug("found '$mwTitle' in namespace '$namespace'");
+      if ($namespace eq $this->{namespace}) {
+        $this->writeDebug("allowed namespace '$namespace'");
+	$isAllowed = 1;
       }
     }
     my $text = $this->getPageText($page);
-    if ($this->{matchPattern}) {
-      unless ($text =~ /$this->{matchPattern}/) {
-	$this->writeDebug("skipping '$mwTitle' ... not matching");
-	next;
+    if (!$isAllowed && $this->{matchPattern}) {
+      if ($text =~ /$this->{matchPattern}/) {
+        $this->writeDebug("allowed text");
+	$isAllowed = 1;
       }
+    }
+
+    if (!$isAllowed && $this->{catPattern}) {
+      my $categories = $page->categories;
+      if ($categories) {
+        $categories = join(',', sort(@$categories));
+        if ($categories =~ /$this->{catPattern}/) {
+        $this->writeDebug("allowed category '$categories'");
+          $isAllowed = 1;
+        }
+      }
+    }
+
+    if (!$this->{includePattern} &&
+        !$this->{excludePattern} &&
+        !$this->{catPattern} &&
+        !$this->{matchPatter}) {
+      $this->writeDebug("allowed by default rule");
+      $isAllowed = 1;
+    }
+    unless ($isAllowed) {
+      print STDERR "skipping '$mwTitle'                           \r"
+        if $this->{debug};
+      next;
     }
 
     my ($twWeb, $twTopic) = $this->getTitle($page);
     my $webTopicName = "$twWeb.$twTopic";
 
     $this->writeDebug("### processing $mwTitle -> $webTopicName");
+    my $origText = $text;
 
     # create directories for namespaces
     $this->createWeb($twWeb);
@@ -312,6 +342,10 @@ sub convert {
 
     # execute afterConvert handler
     $this->execHandler('after', $page, $text);
+
+    #if ($this->{debug}) {
+      $text .= "---++ Original Source \n<verbatim>\n$origText\n</verbatim>\n";
+    #}
 
     # save
     $this->saveTopic($page, $text, $twWeb, $twTopic) if defined $text;
@@ -381,7 +415,7 @@ sub createPage {
     $this->writeWarning("'$mwTitle' clashes with '$this->{seenPage}{$webTopicName}' on '$webTopicName'");
   }
   $this->{seenPage}{$webTopicName} = $mwTitle;
-  $this->writeDebug("creating page '$webTopicName'");
+  #$this->writeDebug("creating page '$webTopicName'");
 
   # process text
   $this->convertMarkup($page, 1, $_[0]);
@@ -426,7 +460,7 @@ sub saveTopic {
 
   $web ||= $this->{targetWeb};
 
-  $this->writeDebug("called saveTopic(page, text, $web, $topic)");
+  #$this->writeDebug("called saveTopic(page, text, $web, $topic)");
   my $author;
   my $date;
   if ($page) {
@@ -455,7 +489,7 @@ sub saveTopic {
 
   my $defaultWebFileName = $TWiki::cfg{DataDir}.'/'.$this->{defaultWeb}.'/'.$topic.'.txt';
 
-  if (-f $topicFileName && ! -f $defaultWebFileName) { # overwriting default topics is ok
+  if (-f $topicFileName && ! -f $defaultWebFileName && ! $this->{cummulative}) { # overwriting default topics is ok
     my $index = 0;
     my $newTopicFileName;
     $topicFileName =~ s/\.txt$//o;
@@ -475,9 +509,9 @@ sub saveTopic {
   }
 
   if ($this->{dry}) {
-    $this->writeDebug("would create file '$topicFileName'");
+    #$this->writeDebug("would create file '$topicFileName'");
   } else {
-    $this->writeDebug("creating file '$topicFileName'");
+    #$this->writeDebug("creating file '$topicFileName'");
     unless (open(FILE, ">$topicFileName")) {
       die "Can't create file $topicFileName - $!\n";
     }
@@ -514,8 +548,8 @@ sub convertMarkup {
   $_[0] =~ s/<gallery(.*?)?>(.*?)<\/gallery>/$this->handleGallery($page, $1, $2)/ges;
 
   # multimedia
-  $_[0] =~ s/\[\[$this->{language}{Image}:(.+?)\]\]/$this->handleImage($page, $1)/ge;
-  $_[0] =~ s/\[\[$this->{language}{Media}:(.+?)\]\]/$this->handleMedia($page, $1)/ge;
+  $_[0] =~ s/\[\[$this->{language}{Image}:(.+)\]\]/$this->handleImage($page, $1)/ge;
+  $_[0] =~ s/\[\[$this->{language}{Media}:(.+)\]\]/$this->handleMedia($page, $1)/ge;
 
   # mailto
   $_[0] =~ s/\[mailto:([^\s]+?)\]/$1/g;
@@ -883,9 +917,9 @@ sub handleGallery {
       $file =~ s/^\s+//g;
       $file =~ s/\s+$//g;
       $file =~ s/ +/_/g;
-      push @images, $file;
       # attach the image
-      $this->attachMedia($page, $file, $comment);
+      $file = $this->attachMedia($page, $file, $comment);
+      push @images, $file;
     }
   }
   $result .= '%IMAGEGALLERY{include="'.join('|',@images).'"}%'."\n";
@@ -912,16 +946,16 @@ sub handleImage {
   $file =~ s/ +/_/g;
 
   # attach the image
-  $this->attachMedia($page, $file);
+  $file = $this->attachMedia($page, $file);
 
   # recursive call for the caption
   if ($args) {
     $this->convertMarkup($page, 0, $args);
     $args =~ s/"/\\"/go;
     $args =~ s/%/\$percnt/go;
-    $result = "\%IMAGE{\"$file|$args\"}%";
+    $result = "\%IMAGE{\"$file|$args\" align=\"right\"}%";
   } else {
-    $result = "\%IMAGE{\"$file\"}%";
+    $result = "\%IMAGE{\"$file\" align=\"right\"}%";
   }
 
   return $result;
@@ -977,11 +1011,13 @@ sub attachMedia {
   my $key = md5_hex($utf8file);
   my $source = $this->{images}.'/'.substr($key,0,1).'/'.substr($key,0,2).'/'.$utf8file;
 
+  return $source if $source =~ /^https?:\/\//; # remote image / deep link
+
   if (-f $source) {
     #$this->writeDebug("found $source");
   } else {
     $this->writeWarning("image $source not found in ".$page->title);
-    return;
+    return '';
   }
 
   # find out where to put the image
@@ -994,12 +1030,12 @@ sub attachMedia {
   my $pubDir = $TWiki::cfg{PubDir}.'/'.$webTopicName;
   unless (-d $pubDir) {
     if ($this->{dry}) {
-      $this->writeDebug("would create directory $pubDir");
+      #$this->writeDebug("would create directory $pubDir");
     } else {
       unless (mkdir $pubDir) {
         $this->writeWarning("failed to attach data to topic $webTopicName");
         $this->writeWarning("can't create $pubDir: $!");
-        return;
+        return '';
       }
     }
   }
@@ -1032,6 +1068,7 @@ sub attachMedia {
 
   push(@{$page->{_attachments}},$attachmentText);
 
+  return $file;
 }
 
 
@@ -1040,7 +1077,7 @@ sub attachMedia {
 sub handleInternalLink {
   my ($this, $page, $text) = @_;
 
-  $this->writeDebug("handleInternalLink(".$page->title.", $text)");
+  #$this->writeDebug("handleInternalLink(".$page->title.", $text)");
 
   my $linkText = $text;
   my $topicName = $text;
@@ -1056,7 +1093,7 @@ sub handleInternalLink {
   # links have to be full qualified to cope with semantic differences properly
   my $result = "\[$translationToken0\[$webTopicName][$linkText]]";
 
-  $this->writeDebug("internal link [[$text]] -> $result");
+  #$this->writeDebug("internal link [[$text]] -> $result");
   return $result;
 }
 
@@ -1116,7 +1153,7 @@ sub getTitle {
 #	$this->{warnedNamespace}{$1} = 1;
 #      }
 #    }
-    $this->writeDebug("found explicite webName=$webName");
+    #$this->writeDebug("found explicite webName=$webName");
   }
 
   $topicName = $this->getCamelCase($topicName);
@@ -1143,14 +1180,14 @@ sub getTitle {
   $webName ||= $this->{targetWeb};
   my $mappedWebName = $this->{webMap}{$webName};
   if ($mappedWebName) {
-    $this->writeDebug("found web '$webName' in mapping ... renaming it to '$mappedWebName'");
+    #$this->writeDebug("found web '$webName' in mapping ... renaming it to '$mappedWebName'");
     $webName = $mappedWebName;
   } else {
     $webName = $this->{targetWeb}.'.'.$webName
       if $webName ne $this->{targetWeb};
   }
 
-  $this->writeDebug("converting title '$title' -> webName=$webName, topicName=$topicName");
+  #$this->writeDebug("converting title '$title' -> webName=$webName, topicName=$topicName");
   
   $this->{titleCache}{$title} = [$webName, $topicName];
   return ($webName, $topicName);
