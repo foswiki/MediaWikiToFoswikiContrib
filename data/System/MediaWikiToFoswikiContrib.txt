@@ -1,8 +1,8 @@
 %META:TOPICINFO{author="micha" date="1231873060" format="1.1" version="1.2"}%
----+!! !MediaWikiToTWikiAddOn
+---+!! !MediaWikiToFoswikiAddOn
 <!--
 One line description, required for extensions repository catalog.
-   * Set SHORTDESCRIPTION = <nop>MediaWiki 2 TWiki Conversion Tool
+   * Set SHORTDESCRIPTION = <nop>MediaWiki 2 Foswiki Conversion Tool
 -->
 %SHORTDESCRIPTION%
 
@@ -19,39 +19,39 @@ One line description, required for extensions repository catalog.
 </table>
 
 This is a commandline tool to import <nop>MediaWiki pages and images
-to TWiki. It processes a <nop>MediaWiki XML dump to extract the pages
+to Foswiki. It processes a <nop>MediaWiki XML dump to extract the pages
 and thus does not need a database access once the dump was created.
 
 The conversion tool takes care of almost all peculiarities of <nop>MediaWiki
-and TWiki. It does _not_ map <nop>MediaWiki's category system onto TWiki
-as long as TWiki lacks a standard category system. There are however many
-ways to implement categories in TWiki, one of which is the upcomming
+and Foswiki. It does _not_ map <nop>MediaWiki's category system onto Foswiki
+as long as Foswiki lacks a standard category system. There are however many
+ways to implement categories in Foswiki, one of which is the upcomming
 <nop>ClassificationPlugin which implements true hierarchies and 
-semantic predicates to query categories and topics within. The mediawiki2twiki
-tool allows to map the <nop>MediaWiki categories onto any TWiki category
+semantic predicates to query categories and topics within. The mediawiki2foswiki
+tool allows to map the <nop>MediaWiki categories onto any Foswiki category
 system like the mentioned one using a plugin interface that comes with
 the conversion tool.
 
 One notion of caution: in general the conversion tool is able to
 convert the wiki markup dialects. However, the <nop>MediaWiki's template 
-mechanism, comparable to TWiki's parametrized =INCLUDE= statement does
+mechanism, comparable to Foswiki's parametrized =INCLUDE= statement does
 *not* match. The reason is burried in the different parsing priorities
-within both parsers: while <nop>MediaWiki parses left-to-right, TWiki
+within both parsers: while <nop>MediaWiki parses left-to-right, Foswiki
 does also parser inside-out, which means parameters to =INCLUDE= are
 evaluate _before_ making the inclusion. The opposite is the case
 in <nop>MediaWiki. In a way <nop>MediaWiki's tempaltes are called
-"by reference" (passing the unparsed parameters) while TWiki evaluates
+"by reference" (passing the unparsed parameters) while Foswiki evaluates
 =INCLUDE= passing parameters "by value". This means, that <nop>WikiApplications
-written for <nop>MediaWiki won't be translatable to <nop>TWikiApplications
+written for <nop>MediaWiki won't be translatable to <nop>WikiApplications
 easily by this tool.
 
 
 ---++ Documentation
-The conversion tool is in =&lt;path-to-your-twiki&gt;/tools/mediawiki2twiki=.
+The conversion tool is in =&lt;path-to-your-foswiki&gt;/tools/mediawiki2foswiki=.
 
 ---+++ Synopsis
 <verbatim>
-       mediawiki2twiki
+       mediawiki2foswiki
              --file <dumpfile>
              [--<debug>]
              [--<defaultweb> <webname>]
@@ -72,7 +72,7 @@ The conversion tool is in =&lt;path-to-your-twiki&gt;/tools/mediawiki2twiki=.
 
 ---+++ Example call
 <verbatim>
-       mediawiki2twiki
+       mediawiki2foswiki
              --file dump.xml
              --web MediaWiki
              --language de
@@ -83,13 +83,13 @@ The conversion tool is in =&lt;path-to-your-twiki&gt;/tools/mediawiki2twiki=.
              --exclude '^(MediaWiki|Bild|Kategorie):'
 </verbatim>
 
-This reads the file =dump.xml=, and creats a TWiki web called <nop>MediaWiki in our
-current TWiki installation (see Setup). In this example, the source content is German.
+This reads the file =dump.xml=, and creats a web called <nop>MediaWiki in our
+current installation (see Setup). In this example, the source content is German.
 The pages "Hauptseite" will be stored in the the =WebHome= topic. The
 =Special.Allpages= page will be stored in =WebTopicList"=. Images are taken from
 the images subdirectory of our <nop>MediaWiki installation at =/var/www/mediawiki=.
 We prepared a template web called =_mediawiki_defaul= that will be used when
-creating TWiki webs. We have some perl code in =MyConversionPlugin.pm= that
+creating webs. We have some perl code in =MyConversionPlugin.pm= that
 defines some custom conversions only of relevance for our own content. Source
 pages that match the regular expression =MediaWiki|Bild|Kategorie= will be
 excluded from the translation process.
@@ -103,26 +103,19 @@ should test the conversion result by using the -debug, -dry and -max.
 
 
 ---++ Installation Instructions
-   * Download the ZIP file from the Plugin web (see below)
-   * Unzip ==%TOPIC%.zip== in your twiki installation directory. Content:
-   | *File:* | *Description:* |
-%$MANIFEST%
-   * Verify that the tool works fine by going to the =tools= subdirectory
-     of your TWiki installation and type =./mediawiki2twiki --help=
-
+%$INSTALL_INSTRUCTIONS%
 
 ---++ <nop>AddOn Info
 Sponsored by <a href="http://www.schenck-rotec.net"><img src="%ATTACHURLPATH%/schenck_logo.gif" border="0" title="Schenck-RoTec"/></a>
 
-|  <nop>AddOn Author: | TWiki:Main.MichaelDaum |
+|  <nop>AddOn Author: | Michael Daum |
 |  Copyright &copy;: | 2006-2009, Michael Daum http://michaeldaumconsulting.com |
 |  License: | GPL ([[http://www.gnu.org/copyleft/gpl.html][GNU General Public License]]) |
 |  <nop>AddOn Version: | v1.0 |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
 |  20 Jul 2007 | initial release |
 |  Dependencies: | %$DEPENDENCIES% |
-|  <nop>AddOn Home: | Foswiki:Extensions/MediaWikiToTWikiAddOn |
-|  Feedback: | Foswiki:Extensions/MediaWikiToTWikiAddOnDev |
+|  Contrib Home: | Foswiki:Extensions/MediaWikiToFoswikiContrib |
 
 
 
