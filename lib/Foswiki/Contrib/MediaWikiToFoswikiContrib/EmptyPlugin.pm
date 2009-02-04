@@ -1,10 +1,10 @@
-# Plugin for mediawiki2twiki
+# Plugin for mediawiki2foswiki
 #
-# Copyright (C) 2007 Michael Daum http://wikiring.de
+# Copyright (C) 2007-2009 Michael Daum http://michaeldaumconsulting.com
 #
 # Copy/Rename this file to YourOwnPlugin.pm and rename the package line below
 
-package TWiki::Contrib::MediaWiki2TWikiAddOn::EmptyPlugin;
+package Foswiki::Contrib::MediaWiki2FoswikiContrib::EmptyPlugin;
 use strict;
 
 ##############################################################################
@@ -27,7 +27,7 @@ sub DISABLED_handleInit {
 }
 
 ##############################################################################
-# called when the title of a mediawiki is converted to a TopicTitle for TWiki
+# called when the title of a mediawiki is converted to a TopicTitle
 sub DISABLED_handleTitle {
   my $converter = shift;
   my $page = shift;
@@ -57,7 +57,7 @@ sub DISABLED_handleBefore {
 }
 
 ##############################################################################
-# called after a page has been converted to a TWiki topic
+# called after a page has been converted to a topic
 sub DISABLED_handleAfter {
   my $converter = shift;
   my $page = shift;

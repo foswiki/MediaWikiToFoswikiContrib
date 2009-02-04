@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2007 Michael Daum http://wikiring.de
+# Copyright (C) 2006-2009 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -11,18 +11,18 @@
 # GNU General Public License for more details, published at
 # http://www.gnu.org/copyleft/gpl.html
 
-package TWiki::Contrib::MediaWikiToTWikiAddOn;
+package Foswiki::Contrib::MediaWikiToFoswikiContrib;
 
 use strict;
 use vars qw( $VERSION $RELEASE $SHORTDESCRIPTION );
 
 $VERSION = '$Rev$';
 $RELEASE = 'v1.0';
-$SHORTDESCRIPTION = 'MediaWiki 2 TWiki Conversion Tool';
+$SHORTDESCRIPTION = 'MediaWiki 2 Foswiki Conversion Tool';
 
 use Getopt::Long;
 use Pod::Usage;
-use TWiki::Contrib::MediaWikiToTWikiAddOn::Converter;
+use Foswiki::Contrib::MediaWikiToFoswikiContrib::Converter;
 
 ##############################################################################
 sub main {
@@ -70,19 +70,19 @@ sub main {
   ) or pod2usage(2);
 
   unless (defined
-    $TWiki::Contrib::MediaWikiToTWikiAddOn::Converter::language{$args{language}}) {
+    $Foswiki::Contrib::MediaWikiToFoswikiContrib::Converter::language{$args{language}}) {
     print STDERR "ERROR: unknown language $args{language}. Known languages are: ".
-      join(', ', sort keys %TWiki::Contrib::MediaWikiToTWikiAddOn::language).
+      join(', ', sort keys %Foswiki::Contrib::MediaWikiToFoswikiContrib::language).
       "\n";
     exit;
   }
 
   pod2usage(-exitval =>1, 
     -verbose=>2,
-    -message => "\nThe MEDIAWIKI 2 TWiki Conversion Tool\n"
+    -message => "\nThe MEDIAWIKI 2 Foswiki Conversion Tool\n"
   ) if $help;
 
-  my $converter = TWiki::Contrib::MediaWikiToTWikiAddOn::Converter->new(%args);
+  my $converter = Foswiki::Contrib::MediaWikiToFoswikiContrib::Converter->new(%args);
   #$converter->writeInfo();
   $converter->convert();
 }

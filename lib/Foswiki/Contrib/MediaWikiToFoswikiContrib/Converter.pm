@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2008 Michael Daum http://michaeldaumconsulting.com
+# Copyright (C) 2006-2009 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -11,7 +11,7 @@
 # GNU General Public License for more details, published at
 # http://www.gnu.org/copyleft/gpl.html
 
-package TWiki::Contrib::MediaWikiToTWikiAddOn::Converter;
+package Foswiki::Contrib::MediaWikiToFoswikiContrib::Converter;
 
 use strict;
 use vars qw(%language $attachmentTemplate
@@ -40,7 +40,7 @@ BEGIN {
   );
 }
 
-use TWiki::Time;
+use Foswiki::Time;
 use Digest::MD5 qw(md5_hex);
 use File::Copy;
 use Parse::MediaWikiDump;
@@ -89,7 +89,7 @@ sub new {
   $this->{callbacks} = {};
   $this->{categories} = {};
   $this->{titleCache} = {};
-  #$this->{session} = new TWiki;
+  #$this->{session} = new Foswiki;
 
   $this = bless($this, $class);
 
@@ -186,14 +186,14 @@ sub createWeb {
   my $parentWeb = '';
   foreach my $web (@parentWebs) {
     $parentWeb .= "/$web";
-    my $parentWebDir = $TWiki::cfg{DataDir}.$parentWeb;
+    my $parentWebDir = $Foswiki::cfg{DataDir}.$parentWeb;
     unless (-d $parentWebDir) {
       $this->createWeb($parentWeb);
     }
   }
 
   # create data dir
-  my $dataDir = $TWiki::cfg{DataDir}.$parentWeb.'/'.$webName;
+  my $dataDir = $Foswiki::cfg{DataDir}.$parentWeb.'/'.$webName;
   unless (-d $dataDir) {
     if ($this->{dry}) {
       #$this->writeDebug("would create directory $dataDir");
@@ -203,7 +203,7 @@ sub createWeb {
   }
 
   # create pub dir
-  my $pubDir = $TWiki::cfg{PubDir}.'/'.$parentWeb.'/'.$webName;
+  my $pubDir = $Foswiki::cfg{PubDir}.'/'.$parentWeb.'/'.$webName;
   unless (-d $pubDir) {
     if ($this->{dry}) {
       #$this->writeDebug("would create directory $pubDir");
@@ -212,7 +212,7 @@ sub createWeb {
     }
   }
 
-  my $defaultWeb = $TWiki::cfg{DataDir}.'/'.$this->{defaultWeb};
+  my $defaultWeb = $Foswiki::cfg{DataDir}.'/'.$this->{defaultWeb};
   opendir (DIR,$defaultWeb) or die "can't open default web $defaultWeb: $!"; 
   my @defaultTopics = grep { /\.txt$/ && ! -f "$dataDir/$_" } readdir(DIR);
   closedir DIR;
@@ -464,7 +464,7 @@ sub saveTopic {
   my $author;
   my $date;
   if ($page) {
-    $date = TWiki::Time::parseTime($page->timestamp);
+    $date = Foswiki::Time::parseTime($page->timestamp);
     $author = $page->username || 'UnknownUser';
   } else {
     $author = 'UnknownUser';
@@ -485,9 +485,9 @@ sub saveTopic {
   # create file
   $web =~ s/\./\//go;
   $web =~ s/\/$//go;
-  my $topicFileName = $TWiki::cfg{DataDir}.'/'.$web.'/'.$topic.'.txt';
+  my $topicFileName = $Foswiki::cfg{DataDir}.'/'.$web.'/'.$topic.'.txt';
 
-  my $defaultWebFileName = $TWiki::cfg{DataDir}.'/'.$this->{defaultWeb}.'/'.$topic.'.txt';
+  my $defaultWebFileName = $Foswiki::cfg{DataDir}.'/'.$this->{defaultWeb}.'/'.$topic.'.txt';
 
   if (-f $topicFileName && ! -f $defaultWebFileName && ! $this->{cummulative}) { # overwriting default topics is ok
     my $index = 0;
@@ -857,11 +857,11 @@ sub handleTemplateCall {
   $webName ||= $this->{language}{Template};
   my $webTopicName = "$webName.$topicName";
 
-  # OUTCH: convert links in template as they are handled differently in MediaWiki and TWiki:
+  # OUTCH: convert links in template as they are handled differently in MediaWiki and Foswiki:
   # links in a transcluded page are resolved locally/early in TW while resolved lately
   # in MW. Example: Given you have a transclusion in an article in the Main namespace/web
   # of another article called 'Template:A'. Now Template:A has a link [[B]] in it. In MW it
-  # will create a link to Main:B while linking to Template:B in TWiki
+  # will create a link to Main:B while linking to Template:B in Foswiki
 
   # build (parametrized) INCLUDE
   my $result = '%INCLUDE{"'.$webTopicName.'"'; # TODO: how do we get the templates
@@ -1005,8 +1005,8 @@ sub attachMedia {
 
   # cope with attachments that have umlauts in their name
   my $utf8file = $file;
-  $utf8file = to_utf8(-string=>$utf8file, -charset=>$TWiki::cfg{Site}{CharSet})
-    if $TWiki::cfg{Site}{CharSet} !~ /^utf-?8$/i;
+  $utf8file = to_utf8(-string=>$utf8file, -charset=>$Foswiki::cfg{Site}{CharSet})
+    if $Foswiki::cfg{Site}{CharSet} !~ /^utf-?8$/i;
 
   my $key = md5_hex($utf8file);
   my $source = $this->{images}.'/'.substr($key,0,1).'/'.substr($key,0,2).'/'.$utf8file;
@@ -1027,7 +1027,7 @@ sub attachMedia {
   my $webTopicName = "$web.$topic";
   $webTopicName =~ s/\./\//g;
 
-  my $pubDir = $TWiki::cfg{PubDir}.'/'.$webTopicName;
+  my $pubDir = $Foswiki::cfg{PubDir}.'/'.$webTopicName;
   unless (-d $pubDir) {
     if ($this->{dry}) {
       #$this->writeDebug("would create directory $pubDir");
@@ -1040,8 +1040,8 @@ sub attachMedia {
     }
   }
   my $target = $pubDir.'/'.$file;
-  $target = from_utf8(-string=>$target, -charset=>$TWiki::cfg{Site}{CharSet})
-    unless $TWiki::cfg{Site}{CharSet} =~ /^utf-?8$/i;
+  $target = from_utf8(-string=>$target, -charset=>$Foswiki::cfg{Site}{CharSet})
+    unless $Foswiki::cfg{Site}{CharSet} =~ /^utf-?8$/i;
 
   if ($this->{dry}) {
     $this->writeDebug("would copy media file $source to $target");
@@ -1202,7 +1202,7 @@ sub convertAnchor {
   #$this->writeDebug("before anchor=$anchor");
 
   $anchor =~ s/\.[A-F0-9][A-F0-9]\.[A-F0-9][A-F0-9]/_/go;
-  $anchor =~ s/[^$TWiki::regex{mixedAlphaNum}]+/_/g;
+  $anchor =~ s/[^$Foswiki::regex{mixedAlphaNum}]+/_/g;
   $anchor =~ s/__+/_/g;
   $anchor = substr($anchor, 0, 32);
 
@@ -1216,8 +1216,8 @@ sub getPageText {
   my ($this, $page) = @_;
 
   my $text = ${$page->text};
-  $text = from_utf8(-string=>$text, -charset=>$TWiki::cfg{Site}{CharSet})
-    unless $TWiki::cfg{Site}{CharSet} =~ /^utf-?8$/i;
+  $text = from_utf8(-string=>$text, -charset=>$Foswiki::cfg{Site}{CharSet})
+    unless $Foswiki::cfg{Site}{CharSet} =~ /^utf-?8$/i;
 
   return $text;
 }
@@ -1227,7 +1227,7 @@ sub getCamelCase {
   my ($this, $name) = @_;
 
   my $result = '';
-  foreach my $part (split(/[^$TWiki::regex{mixedAlphaNum}]/, $name)) {
+  foreach my $part (split(/[^$Foswiki::regex{mixedAlphaNum}]/, $name)) {
     $result .= ucfirst($part);
   }
   
@@ -1239,7 +1239,7 @@ sub getCategoryName {
   my ($this, $name) = @_;
 
   my $result = '';
-  foreach my $part (split(/[^$TWiki::regex{mixedAlphaNum}]/, $name)) {
+  foreach my $part (split(/[^$Foswiki::regex{mixedAlphaNum}]/, $name)) {
     $result .= ucfirst(lc($part));
   }
 
