@@ -1,6 +1,6 @@
 # Plugin for mediawiki2twiki
 #
-# Copyright (C) 2007 Michael Daum http://wikiring.de
+# Copyright (C) 2007-2008 Michael Daum http://michaeldaumconsulting.com
 
 package EmptyMediaWiki2TWikiPlugin;
 use strict;

@@ -29,6 +29,7 @@ mediawiki2twiki
       [--<include> <regex>]
       [--<language> <language code>]
       [--<match> <regex>]
+      [--<cat> <regex>]
       [--<max> <number>]
       [--<namespace> <name>]
       [--<plugin> <perlfile>]
