@@ -1,4 +1,4 @@
-%META:TOPICINFO{author="micha" date="1212998721" format="1.1" version="1.2"}%
+%META:TOPICINFO{author="ProjectContributor" date="1212998721" format="1.1" version="1.2"}%
 %DBCALL{"%FORMFIELD{"Target"}%" remote="on" section="%FORMFIELD{"Section"}%"}%
 <!--
    * Set EDIT_TEMPLATE = Applications.FormEdit
