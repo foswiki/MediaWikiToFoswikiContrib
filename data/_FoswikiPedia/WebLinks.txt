@@ -1,0 +1,21 @@
+%META:TOPICINFO{author="ProjectContributor" date="1199552369" format="1.1" version="$Rev$"}%
+%META:TOPICPARENT{name="WebPreferences"}%
+---+ WebLinks for the %WEB% web
+
+%STARTINCLUDE%<!-- foswikipedia.weblinks -->
+   * [[ClassifiedTopic][%MAKETEXT{"New Topic"}%]]
+   * [[Category][All Categories]]
+   * [[CategoryBrowser][Category Browser]]
+   * [[WebTagCloud][All Tags]]
+   * [[WebTopicList][%MAKETEXT{"Index"}%]]
+   * [[WebChanges][%MAKETEXT{"Changes"}%]]
+   * [[WebNotify][%MAKETEXT{"Notifications"}%]]
+   * [[WebStatistics][%MAKETEXT{"Statistics"}%]]
+%~~ TAGRELATEDTOPICS{"%BASETOPIC%" 
+~~~   header="<h2><a name=\"related\">Related Topics</a></h2>$n" 
+~~~   format="   1 <a href=\"%SCRIPTURLPATH{"view"}%/%BASEWEB%/$topic\"
+~~~                   title=\"$percntDBQUERY{topic=\"$topic\" format=\"$formfield(Tag)\"}$percnt\">
+*~~                $percntTOPICTITLE{\"$web.$topic\"}$percnt</a>"
+~~~   separator="$n"
+~~~ }%
+<!-- foswikipedia.weblinks -->%STOPINCLUDE%

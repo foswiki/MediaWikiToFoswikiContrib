@@ -1,0 +1,30 @@
+#!/bin/sh
+# 
+# Script to start the conversion
+
+FOSWIKILIBS=~/foswiki/trunk/core/lib
+mediawiki2foswiki=./mediawiki2foswiki
+images=http://upload.wikimedia.org/wikipedia/commons
+dumpfile=~micha/down/wikipedia/enwiki-latest-pages-articles.xml
+web=FoswikiPedia
+exclude='--exclude ^(MediaWiki|Category|Template|Users|Discussion|Image|Admin):'
+#match='--match Bentley'
+include='--include Bentley'
+cat='--cat "Auto|Vehicle|Car"'
+#dry='--dry'
+max='--max 1'
+#debug='--debug'
+
+#plugin='--plugin Foswiki::Contrib::FoswikiPediaAddOn::Converter.pm'
+
+$mediawiki2foswiki \
+--file $dumpfile \
+--web $web \
+--language en \
+--topicmap 'Main_Page=WebHome,Spezial.AllPages=WebTopicList' \
+--webmap 'Users=Main' \
+--images $images \
+--defaultweb _FoswikiPediaAddOn \
+$exclude $include $cat $match \
+$plugin $debug $dry $max \
+$*

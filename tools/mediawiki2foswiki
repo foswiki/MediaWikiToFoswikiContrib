@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Copyright (C) 2006-2007 Michael Daum http://wikiring.de
+# Copyright (C) 2006-2009 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -14,11 +14,11 @@
 
 =head1 NAME
 
-MediaWiki 2 TWiki Conversion Tool
+MediaWiki 2 Foswiki Conversion Tool
 
 =head1 SYNOPSIS
 
-mediawiki2twiki
+mediawiki2foswiki
       --file <dumpfile>
       [--<debug>]
       [--<defaultweb> <webname>]
@@ -39,7 +39,7 @@ mediawiki2twiki
 
 =head1 Examples
 
-mediawiki2twiki 
+mediawiki2foswiki 
       --file dump.xml 
       --web MediaWiki 
       --language de 
@@ -49,12 +49,12 @@ mediawiki2twiki
       --plugin MyConversionPlugin 
       --exclude '^(MediaWiki|Bild|Kategorie):' 
 
-This reads the file "dump.xml", and creats a TWiki web called MediaWiki in our
-current TWiki installation (see Setup); the source content is German; the pages
+This reads the file "dump.xml", and creats a web called MediaWiki in our
+current installation (see Setup); the source content is German; the pages
 pages "Hauptseite" will be stored in the the "WebHome" topic; the "Special.Allpages"
 page will be stored in "WebTopicList"; images are taken from the images subdirectory
 of our MediaWiki installation at /var/www/mediawiki; we prepared a template web 
-called "_mediawiki_default" that will be used when creating TWiki webs; we have
+called "_mediawiki_default" that will be used when creating webs; we have
 some perl code in MyConversionPlugin.pm that defines some custom conversions only
 of relevance for our own content; source pages that match the regular expression
 "MediaWiki|Bild|Kategorie" will be excluded from the translation process.
@@ -71,15 +71,15 @@ you should test the conversion result by using the B<-debug>, B<-dry> and B<-max
 
 BEGIN {
     unshift @INC, '.';
-    unshift @INC, '../bin'; # SMELL: argh where's the twiki installation
+    unshift @INC, '../bin'; # SMELL: argh where's the foswiki installation
     require 'setlib.cfg';
     require 'LocalSite.cfg';
 }
 
 use strict;
-use TWiki::Contrib::MediaWikiToTWikiAddOn;
+use Foswiki::Contrib::MediaWikiToFoswikiContrib;
 
-TWiki::Contrib::MediaWikiToTWikiAddOn::main();
+Foswiki::Contrib::MediaWikiToFoswikiContrib::main();
 
 
 1;
