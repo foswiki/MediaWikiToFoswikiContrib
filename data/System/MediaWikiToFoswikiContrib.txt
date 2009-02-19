@@ -111,8 +111,9 @@ Sponsored by <a href="http://www.schenck-rotec.net"><img src="%ATTACHURLPATH%/sc
 |  <nop>AddOn Author: | Michael Daum |
 |  Copyright &copy;: | 2006-2009, Michael Daum http://michaeldaumconsulting.com |
 |  License: | GPL ([[http://www.gnu.org/copyleft/gpl.html][GNU General Public License]]) |
-|  <nop>AddOn Version: | v1.0 |
+|  <nop>AddOn Version: | v2.0 |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  19 Feb 2009 | converted to foswiki extension |
 |  20 Jul 2007 | initial release |
 |  Dependencies: | %$DEPENDENCIES% |
 |  Contrib Home: | Foswiki:Extensions/MediaWikiToFoswikiContrib |

@@ -17,7 +17,7 @@ use strict;
 use vars qw( $VERSION $RELEASE $SHORTDESCRIPTION );
 
 $VERSION = '$Rev$';
-$RELEASE = 'v1.0';
+$RELEASE = 'v2.0';
 $SHORTDESCRIPTION = 'MediaWiki 2 Foswiki Conversion Tool';
 
 use Getopt::Long;
