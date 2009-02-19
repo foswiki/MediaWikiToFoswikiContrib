@@ -46,6 +46,7 @@ use File::Copy;
 use Parse::MediaWikiDump;
 use Unicode::MapUTF8 qw(from_utf8 to_utf8);
 use Carp;
+
 $SIG{__DIE__} = \&Carp::confess;
 $Carp::Verbose = 3;
 
@@ -263,7 +264,7 @@ sub writeWarning {
 # entry to this module
 sub convert {
   my $this = shift;
-
+                              
   # loop over all pages
   my $i = 1;
   while(defined(my $page = $this->{pages}->next)) {
@@ -320,8 +321,8 @@ sub convert {
       $isAllowed = 1;
     }
     unless ($isAllowed) {
-      print STDERR "skipping '$mwTitle'                           \r"
-        if $this->{debug};
+      #print STDERR "skipping '$mwTitle'                           \r"
+      #  if $this->{debug};
       next;
     }
 
@@ -528,18 +529,6 @@ sub convertMarkup {
   my $page = shift;
   my $mode = shift; # 0: page mode; 1: line mode
 
-  # templates
-  $_[0] =~ s/{{{\b([^\}]+?)\b}}}/$this->handleTemplateVariable($page, $1)/ge; # variables
-  $_[0] =~ s/{{([^}]+?)}}/$this->handleTemplateCall($page, $1)/ges; # translocations
-
-  # page mode
-  if ($mode) {
-    # spaces at the beginning of the line are open a verbatim section
-    $this->handleVerbatim($page, $_[0]) if $mode && $_[0] =~ /(^|[\n\r]) /;
-    # indentation
-    $this->handleIndentation($page, $_[0]) if $mode && $_[0] =~ /(^|[\n\r]):/;
-  }
-
   # refs (aka footnotes) 
   $_[0] =~ s/<ref name="(.+?)">(.+?)<\/ref>/$this->handleFootNote($page, $2, $1)/ges;
   $_[0] =~ s/<ref>(.+?)<\/ref>/$this->handleFootNote($page, $1)/ges;
@@ -563,6 +552,18 @@ sub convertMarkup {
 
   # internal links
   $_[0] =~ s/\[\[(.+?)\]\]/$this->handleInternalLink($page, $1)/ge; 
+
+  # templates
+  $_[0] =~ s/{{{\b([^\}]+?)\b}}}/$this->handleTemplateVariable($page, $1)/ge; # variables
+  1 while $_[0] =~ s/{{(?!.*{{)(.+?)}}/$this->handleTemplateCall($page, $1)/ges; # includes
+
+  # page mode
+  if ($mode) {
+    # spaces at the beginning of the line are open a verbatim section
+    $this->handleVerbatim($page, $_[0]) if $mode && $_[0] =~ /(^|[\n\r]) /;
+    # indentation
+    $this->handleIndentation($page, $_[0]) if $mode && $_[0] =~ /(^|[\n\r]):/;
+  }
 
   # TOC
   if ($_[0] =~ s/__NOTOC__//go) {
@@ -825,6 +826,8 @@ sub handleTemplateCall {
   my $params;
   my %params;
 
+  #$this->writeDebug("converting tempalte call '$text'");
+
   # collect params
   if ($templateName =~ /^(.+?)\|\s*(.+)\s*$/s) {
     $templateName = $1;
@@ -834,7 +837,7 @@ sub handleTemplateCall {
     foreach my $param (split(/\s*\|\s*/,$params)) {
       my $name;
       my $value;
-      if ($param =~ /^(.*)=(.*)$/) {
+      if ($param =~ /^\s*(.*?)\s*=\s*(.*?)\s*$/) {
 	$name = $1;
 	$value = $2;
       } else {
@@ -843,16 +846,15 @@ sub handleTemplateCall {
       }
       $value =~ s/^\s+//go;
       $value =~ s/\s+$//go;
-      $value =~ s/"/\\"/go;
       $value =~ s/$translationToken1/\|/g;
       $this->convertMarkup($page, 0, $value);
       $value =~ s/\%/\$percnt/go;
       $value =~ s/"/\\"/go;
       $params{$name} = $value;
+      #$this->writeDebug("param $name=$value");
     }
   }
   $templateName =~ s/<!--.*?-->//gos;
-  #$this->writeDebug("converting tempalte call $templateName");
   my ($webName, $topicName) = $this->getTitle($page, $templateName);
   $webName ||= $this->{language}{Template};
   my $webTopicName = "$webName.$topicName";
@@ -867,9 +869,8 @@ sub handleTemplateCall {
   my $result = '%INCLUDE{"'.$webTopicName.'"'; # TODO: how do we get the templates
   foreach my $name (sort keys %params) {
     my $value = $params{$name};
-    $result .= "\n   $name=\"$value\"";
+    $result .= " $name=\"$value\"";
   }
-  $result .= "\n" if $params;
   #$result .= "  warn=\"[[$webTopicName]]\"\n"
   $result .= "}%";
 
