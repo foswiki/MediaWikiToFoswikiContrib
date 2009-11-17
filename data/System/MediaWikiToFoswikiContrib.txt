@@ -105,13 +105,14 @@ should test the conversion result by using the -debug, -dry and -max.
 ---++ Installation Instructions
 %$INSTALL_INSTRUCTIONS%
 
----++ <nop>AddOn Info
+---++ Contrib Info
 Sponsored by <a href="http://www.schenck-rotec.net"><img src="%ATTACHURLPATH%/schenck_logo.gif" border="0" title="Schenck-RoTec"/></a>
 
-|  <nop>AddOn Author: | Michael Daum |
+|  Author: | Michael Daum |
 |  Copyright &copy;: | 2006-2009, Michael Daum http://michaeldaumconsulting.com |
 |  License: | GPL ([[http://www.gnu.org/copyleft/gpl.html][GNU General Public License]]) |
-|  <nop>AddOn Version: | v2.0 |
+|  Release: | %$RELEASE% |
+|  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
 |  19 Feb 2009 | converted to foswiki extension |
 |  20 Jul 2007 | initial release |
