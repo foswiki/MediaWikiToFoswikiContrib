@@ -37,9 +37,9 @@ convert the wiki markup dialects. However, the <nop>MediaWiki's template
 mechanism, comparable to Foswiki's parametrized =INCLUDE= statement does
 *not* match. The reason is burried in the different parsing priorities
 within both parsers: while <nop>MediaWiki parses left-to-right, Foswiki
-does also parser inside-out, which means parameters to =INCLUDE= are
+also parses inside-out, which means parameters to =INCLUDE= are
 evaluate _before_ making the inclusion. The opposite is the case
-in <nop>MediaWiki. In a way <nop>MediaWiki's tempaltes are called
+in <nop>MediaWiki. In a way <nop>MediaWiki's templates are called
 "by reference" (passing the unparsed parameters) while Foswiki evaluates
 =INCLUDE= passing parameters "by value". This means, that <nop>WikiApplications
 written for <nop>MediaWiki won't be translatable to <nop>WikiApplications
@@ -88,15 +88,15 @@ current installation (see Setup). In this example, the source content is German.
 The pages "Hauptseite" will be stored in the the =WebHome= topic. The
 =Special.Allpages= page will be stored in =WebTopicList"=. Images are taken from
 the images subdirectory of our <nop>MediaWiki installation at =/var/www/mediawiki=.
-We prepared a template web called =_mediawiki_defaul= that will be used when
-creating webs. We have some perl code in =MyConversionPlugin.pm= that
+We prepared a template web called =_mediawiki_default= that will be used when
+creating webs. We have some Perl code in =MyConversionPlugin.pm= that
 defines some custom conversions only of relevance for our own content. Source
 pages that match the regular expression =MediaWiki|Bild|Kategorie= will be
 excluded from the translation process.
 
 ---+++ Options
 The only mandatory option is the name of the <nop>MediaWiki dump file from which
-content is extracted. Before you start extracting large amount of data you
+content is extracted. Before you start extracting large amounts of data you
 should test the conversion result by using the -debug, -dry and -max.
 
 %RED%more docu please%ENDCOLOR%
@@ -114,7 +114,7 @@ Sponsored by <a href="http://www.schenck-rotec.net"><img src="%ATTACHURLPATH%/sc
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
-|  19 Feb 2009 | converted to foswiki extension |
+|  19 Feb 2009 | converted to Foswiki extension |
 |  20 Jul 2007 | initial release |
 |  Dependencies: | %$DEPENDENCIES% |
 |  Contrib Home: | Foswiki:Extensions/MediaWikiToFoswikiContrib |

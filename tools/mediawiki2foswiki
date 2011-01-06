@@ -55,7 +55,7 @@ pages "Hauptseite" will be stored in the the "WebHome" topic; the "Special.Allpa
 page will be stored in "WebTopicList"; images are taken from the images subdirectory
 of our MediaWiki installation at /var/www/mediawiki; we prepared a template web 
 called "_mediawiki_default" that will be used when creating webs; we have
-some perl code in MyConversionPlugin.pm that defines some custom conversions only
+some Perl code in MyConversionPlugin.pm that defines some custom conversions only
 of relevance for our own content; source pages that match the regular expression
 "MediaWiki|Bild|Kategorie" will be excluded from the translation process.
 
