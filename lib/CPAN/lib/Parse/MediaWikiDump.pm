@@ -1,5 +1,6 @@
 package Parse::MediaWikiDump;
 our $VERSION = '0.40';
+
 #the POD is at the end of this file
 #avoid shift() - it is computationally more expensive than pop
 #and shifting values for subroutine input should be avoided in
@@ -10,653 +11,691 @@ package Parse::MediaWikiDump::Pages;
 #This parser works by placing all of the start, text, and end events into
 #a buffer as they come out of XML::Parser. On each call to page() the function
 #checks for a complete article in the buffer and calls for XML::Parser to add
-#more tokens if a complete article is not found. Once a complete article is 
+#more tokens if a complete article is not found. Once a complete article is
 #found it is removed from the buffer, parsed, and an instance of the page
-#object is returned. 
+#object is returned.
 
 use strict;
 use warnings;
 use XML::Parser;
 
 #tokens in the buffer are an array ref with the 0th element specifying
-#its type; these are the constants for those types. 
+#its type; these are the constants for those types.
 
 sub new {
-	my $class = shift;
-	my $source = shift;
-	my $self = {};
+    my $class  = shift;
+    my $source = shift;
+    my $self   = {};
 
-	bless($self, $class);
+    bless( $self, $class );
 
-	$$self{PARSER} = XML::Parser->new(ProtocolEncoding => 'UTF-8');
-	#$$self{PARSER} = XML::Parser->new(ProtocolEncoding => 'ISO-8859-1');
-	$$self{PARSER}->setHandlers('Start', \&start_handler,
-				    'End', \&end_handler);
-        $$self{EXPAT} = $$self{PARSER}->parse_start(state => $self);
-	$$self{BUFFER} = []; 
-	$$self{CHUNK_SIZE} = 32768;
-	$$self{BUF_LIMIT} = 10000;
-	$$self{BYTE} = 0;
-	$$self{GOOD_TAGS} = make_good_tags();
+    $$self{PARSER} = XML::Parser->new( ProtocolEncoding => 'UTF-8' );
 
-	$self->open($source);
-	$self->init;
+    #$$self{PARSER} = XML::Parser->new(ProtocolEncoding => 'ISO-8859-1');
+    $$self{PARSER}
+      ->setHandlers( 'Start', \&start_handler, 'End', \&end_handler );
+    $$self{EXPAT}      = $$self{PARSER}->parse_start( state => $self );
+    $$self{BUFFER}     = [];
+    $$self{CHUNK_SIZE} = 32768;
+    $$self{BUF_LIMIT}  = 10000;
+    $$self{BYTE}       = 0;
+    $$self{GOOD_TAGS}  = make_good_tags();
 
-	return $self;
+    $self->open($source);
+    $self->init;
+
+    return $self;
 }
 
 sub next {
-	my $self = shift;
-	my $buffer = $$self{BUFFER};
-	my $offset;
-	my @page;
+    my $self   = shift;
+    my $buffer = $$self{BUFFER};
+    my $offset;
+    my @page;
 
-	#look through the contents of our buffer for a complete article; fill
-	#the buffer with more data if an entire article is not there
-	while(1) {
-		$offset = $self->search_buffer('/page');
-		last if $offset != -1;
+    #look through the contents of our buffer for a complete article; fill
+    #the buffer with more data if an entire article is not there
+    while (1) {
+        $offset = $self->search_buffer('/page');
+        last if $offset != -1;
 
-		#indicates EOF
-		return undef unless $self->parse_more;
-	}
+        #indicates EOF
+        return undef unless $self->parse_more;
+    }
 
-	#remove the entire page from the buffer
-	@page = splice(@$buffer, 0, $offset + 1);
+    #remove the entire page from the buffer
+    @page = splice( @$buffer, 0, $offset + 1 );
 
-	if ($page[0][0] ne 'page') {
-		$self->dump($buffer);
-		die "expected <page>; got " . token2text($page[0]);
-	}
+    if ( $page[0][0] ne 'page' ) {
+        $self->dump($buffer);
+        die "expected <page>; got " . token2text( $page[0] );
+    }
 
-	my $data = $self->parse_page(\@page);
+    my $data = $self->parse_page( \@page );
 
-	return Parse::MediaWikiDump::page->new($data, $$self{CATEGORY_ANCHOR});
+    return Parse::MediaWikiDump::page->new( $data, $$self{CATEGORY_ANCHOR} );
 }
 
 #outputs a nicely formated representation of the tokens on the buffer specified
 sub dump {
-	my $self = shift;
-	my $buffer = shift || $$self{BUFFER};
-	my $offset = 0;
+    my $self   = shift;
+    my $buffer = shift || $$self{BUFFER};
+    my $offset = 0;
 
-	foreach my $i (0 .. $#$buffer) {
-		my $token = $$buffer[$i];
+    foreach my $i ( 0 .. $#$buffer ) {
+        my $token = $$buffer[$i];
 
-		print STDERR "$i ";
+        print STDERR "$i ";
 
-		if (substr($$token[0], 0, 1) ne '/') {
-			my $attr = $$token[1];
-			print STDERR "  " x $offset;
-			print STDERR "START $$token[0] ";
+        if ( substr( $$token[0], 0, 1 ) ne '/' ) {
+            my $attr = $$token[1];
+            print STDERR "  " x $offset;
+            print STDERR "START $$token[0] ";
 
-			foreach my $key (sort(keys(%$attr))) {
-				print STDERR "$key=\"$$attr{$key}\" ";
-			}
+            foreach my $key ( sort( keys(%$attr) ) ) {
+                print STDERR "$key=\"$$attr{$key}\" ";
+            }
 
-			print STDERR "\n";
-			$offset++;
-		} elsif (ref $token eq 'ARRAY') {
-			$offset--;
-			print STDERR "  " x $offset;
-			print STDERR "END $$token[0]\n";
-		} elsif (ref $token eq 'SCALAR') {
-			my $ref = $token;
-			print STDERR "  " x $offset;
-			print STDERR "TEXT ";
+            print STDERR "\n";
+            $offset++;
+        }
+        elsif ( ref $token eq 'ARRAY' ) {
+            $offset--;
+            print STDERR "  " x $offset;
+            print STDERR "END $$token[0]\n";
+        }
+        elsif ( ref $token eq 'SCALAR' ) {
+            my $ref = $token;
+            print STDERR "  " x $offset;
+            print STDERR "TEXT ";
 
-			my $len = length($$ref);
+            my $len = length($$ref);
 
-			if ($len < 50) {
-				print STDERR "'$$ref'\n";
-			} else {
-				print STDERR "$len characters\n";
-			}
-		}
-	}
-	
-	return 1;
+            if ( $len < 50 ) {
+                print STDERR "'$$ref'\n";
+            }
+            else {
+                print STDERR "$len characters\n";
+            }
+        }
+    }
+
+    return 1;
 }
 
 sub sitename {
-	my $self = shift;
-	return $$self{HEAD}{sitename};
+    my $self = shift;
+    return $$self{HEAD}{sitename};
 }
 
 sub base {
-	my $self = shift;
-	return $$self{HEAD}{base};
+    my $self = shift;
+    return $$self{HEAD}{base};
 }
 
 sub generator {
-	my $self = shift;
-	return $$self{HEAD}{generator};
+    my $self = shift;
+    return $$self{HEAD}{generator};
 }
 
 sub case {
-	my $self = shift;
-	return $$self{HEAD}{case};
+    my $self = shift;
+    return $$self{HEAD}{case};
 }
 
 sub namespaces {
-	my $self = shift;
-	return $$self{HEAD}{namespaces};
+    my $self = shift;
+    return $$self{HEAD}{namespaces};
 }
 
 sub current_byte {
-	my $self = shift;
-	return $$self{BYTE};
+    my $self = shift;
+    return $$self{BYTE};
 }
 
 sub size {
-	my $self = shift;
-	
-	return undef unless defined $$self{SOURCE_FILE};
+    my $self = shift;
 
-	my @stat = stat($$self{SOURCE_FILE});
+    return undef unless defined $$self{SOURCE_FILE};
 
-	return $stat[7];
+    my @stat = stat( $$self{SOURCE_FILE} );
+
+    return $stat[7];
 }
 
 #depreciated backwards compatibility methods
 
 #replaced by next()
 sub page {
-	my $self = shift;
-	return $self->next(@_);
+    my $self = shift;
+    return $self->next(@_);
 }
 
 #private functions with OO interface
 sub open {
-	my $self = shift;
-	my $source = shift;
+    my $self   = shift;
+    my $source = shift;
 
-	if (ref($source) eq 'GLOB') {
-		$$self{SOURCE} = $source;
-	} else {
-		if (! open($$self{SOURCE}, $source)) {
-			die "could not open $source: $!";
-		}
+    if ( ref($source) eq 'GLOB' ) {
+        $$self{SOURCE} = $source;
+    }
+    else {
+        if ( !open( $$self{SOURCE}, $source ) ) {
+            die "could not open $source: $!";
+        }
 
-		$$self{SOURCE_FILE} = $source;
-	}
+        $$self{SOURCE_FILE} = $source;
+    }
 
-	binmode($$self{SOURCE}, ':utf8');
+    binmode( $$self{SOURCE}, ':utf8' );
 
-	return 1;
+    return 1;
 }
 
 sub init {
-	my $self = shift;
-	my $offset;
-	my @head;
+    my $self = shift;
+    my $offset;
+    my @head;
 
-	#parse more XML until the entire siteinfo section is in the buffer
-	while(1) {
-		die "could not init" unless $self->parse_more;
+    #parse more XML until the entire siteinfo section is in the buffer
+    while (1) {
+        die "could not init" unless $self->parse_more;
 
-		$offset = $self->search_buffer('/siteinfo');
+        $offset = $self->search_buffer('/siteinfo');
 
-		last if $offset != -1;
-	}
+        last if $offset != -1;
+    }
 
-	#pull the siteinfo section out of the buffer
-	@head = splice(@{$$self{BUFFER}}, 0, $offset + 1);
+    #pull the siteinfo section out of the buffer
+    @head = splice( @{ $$self{BUFFER} }, 0, $offset + 1 );
 
-	$self->parse_head(\@head);
+    $self->parse_head( \@head );
 
-	return 1;
+    return 1;
 }
 
 #feed data into expat and have it put more tokens onto the buffer
 sub parse_more {
-	my ($self) = @_;
-	my $buf;
+    my ($self) = @_;
+    my $buf;
 
-	my $read = read($$self{SOURCE}, $buf, $$self{CHUNK_SIZE});
+    my $read = read( $$self{SOURCE}, $buf, $$self{CHUNK_SIZE} );
 
-	if (! defined($read)) {
-		die "error during read: $!";
-	} elsif ($read == 0) {
-		$$self{FINISHED} = 1;
-		$$self{EXPAT}->parse_done();
-		return 0;
-	}
+    if ( !defined($read) ) {
+        die "error during read: $!";
+    }
+    elsif ( $read == 0 ) {
+        $$self{FINISHED} = 1;
+        $$self{EXPAT}->parse_done();
+        return 0;
+    }
 
-	$$self{BYTE} += $read;
-	$$self{EXPAT}->parse_more($buf);
+    $$self{BYTE} += $read;
+    $$self{EXPAT}->parse_more($buf);
 
-	my $buflen = scalar(@{$$self{BUFFER}});
+    my $buflen = scalar( @{ $$self{BUFFER} } );
 
-	die "buffer length of $buflen exceeds $$self{BUF_LIMIT}" unless
-		$buflen < $$self{BUF_LIMIT};
+    die "buffer length of $buflen exceeds $$self{BUF_LIMIT}"
+      unless $buflen < $$self{BUF_LIMIT};
 
-	return 1;
+    return 1;
 }
 
 #searches through a buffer for a specified token
 sub search_buffer {
-	my ($self, $search, $list) = @_;
+    my ( $self, $search, $list ) = @_;
 
-	$list = $$self{BUFFER} unless defined $list;
+    $list = $$self{BUFFER} unless defined $list;
 
-	return -1 if scalar(@$list) == 0;
+    return -1 if scalar(@$list) == 0;
 
-	foreach my $i (0 .. $#$list) {
-		return $i if ref $$list[$i] eq 'ARRAY' && $list->[$i][0] eq $search;
-	}
+    foreach my $i ( 0 .. $#$list ) {
+        return $i if ref $$list[$i] eq 'ARRAY' && $list->[$i][0] eq $search;
+    }
 
-	return -1;
+    return -1;
 }
 
 #this function is very frightning =)
 sub parse_head {
-	my $self = shift;
-	my $buffer = shift;
-	my $state = 'start';
-	my %data = (namespaces => []);
+    my $self   = shift;
+    my $buffer = shift;
+    my $state  = 'start';
+    my %data   = ( namespaces => [] );
 
-	for (my $i = 0; $i <= $#$buffer; $i++) {
-		my $token = $$buffer[$i];
+    for ( my $i = 0 ; $i <= $#$buffer ; $i++ ) {
+        my $token = $$buffer[$i];
 
-		if ($state eq 'start') {
-			my $version;
-			die "$i: expected <mediawiki> got " . token2text($token) unless
-				$$token[0] eq 'mediawiki';
+        if ( $state eq 'start' ) {
+            my $version;
+            die "$i: expected <mediawiki> got " . token2text($token)
+              unless $$token[0] eq 'mediawiki';
 
-			die "$i: version is a required attribute" unless
-				defined($version = $$token[1]->{version});
+            die "$i: version is a required attribute"
+              unless defined( $version = $$token[1]->{version} );
 
-			die "$i: version $version unsupported" unless $version eq '0.3';
+            die "$i: version $version unsupported" unless $version eq '0.3';
 
-			$token = $$buffer[++$i];
+            $token = $$buffer[ ++$i ];
 
-			die "$i: expected <siteinfo> got " . token2text($token) unless
-				$$token[0] eq 'siteinfo';
+            die "$i: expected <siteinfo> got " . token2text($token)
+              unless $$token[0] eq 'siteinfo';
 
-			$state = 'in_siteinfo';
-		} elsif ($state eq 'in_siteinfo') {
-			if ($$token[0] eq 'namespaces') {
-				$state = 'in_namespaces';
-				next;
-			} elsif ($$token[0] eq '/siteinfo') {
-				last;
-			} elsif ($$token[0] eq 'sitename') {
-				$token = $$buffer[++$i];
+            $state = 'in_siteinfo';
+        }
+        elsif ( $state eq 'in_siteinfo' ) {
+            if ( $$token[0] eq 'namespaces' ) {
+                $state = 'in_namespaces';
+                next;
+            }
+            elsif ( $$token[0] eq '/siteinfo' ) {
+                last;
+            }
+            elsif ( $$token[0] eq 'sitename' ) {
+                $token = $$buffer[ ++$i ];
 
-				if (ref $token ne 'SCALAR') {
-					die "$i: expected TEXT but got " . token2text($token);
-				}
+                if ( ref $token ne 'SCALAR' ) {
+                    die "$i: expected TEXT but got " . token2text($token);
+                }
 
-				$data{sitename} = $$token;
+                $data{sitename} = $$token;
 
-				$token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				if ($$token[0] ne '/sitename') {
-					die "$i: expected </sitename> but got " . token2text($token);
-				}
-			} elsif ($$token[0] eq 'base') {
-				$token = $$buffer[++$i];
+                if ( $$token[0] ne '/sitename' ) {
+                    die "$i: expected </sitename> but got "
+                      . token2text($token);
+                }
+            }
+            elsif ( $$token[0] eq 'base' ) {
+                $token = $$buffer[ ++$i ];
 
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected TEXT but got " . token2text($token);
-				}
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected TEXT but got " . token2text($token);
+                }
 
-				$data{base} = $$token;
+                $data{base} = $$token;
 
-				$token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				if ($$token[0] ne '/base') {
-					$self->dump($buffer);
-					die "$i: expected </base> but got " . token2text($token);
-				}
+                if ( $$token[0] ne '/base' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </base> but got " . token2text($token);
+                }
 
-			} elsif ($$token[0] eq 'generator') {
-				$token = $$buffer[++$i];
+            }
+            elsif ( $$token[0] eq 'generator' ) {
+                $token = $$buffer[ ++$i ];
 
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected TEXT but got " . token2text($token);
-				}
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected TEXT but got " . token2text($token);
+                }
 
-				$data{generator} = $$token;
+                $data{generator} = $$token;
 
-				$token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				if ($$token[0] ne '/generator') {
-					$self->dump($buffer);
-					die "$i: expected </generator> but got " . token2text($token);
-				}
+                if ( $$token[0] ne '/generator' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </generator> but got "
+                      . token2text($token);
+                }
 
-			} elsif ($$token[0] eq 'case') {
-				$token = $$buffer[++$i];
+            }
+            elsif ( $$token[0] eq 'case' ) {
+                $token = $$buffer[ ++$i ];
 
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected </case> but got " . token2text($token);
-				}
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </case> but got " . token2text($token);
+                }
 
-				$data{case} = $$token;
+                $data{case} = $$token;
 
-				$token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				if ($$token[0] ne '/case') {
-					$self->dump($buffer);
-					die "$i: expected </case> but got " . token2text($token);
-				}
-			}
+                if ( $$token[0] ne '/case' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </case> but got " . token2text($token);
+                }
+            }
 
-		} elsif ($state eq 'in_namespaces') {
-			my $key;
-			my $name;
+        }
+        elsif ( $state eq 'in_namespaces' ) {
+            my $key;
+            my $name;
 
-			if ($$token[0] eq '/namespaces') {
-				$state = 'in_siteinfo';
-				next;
-			} 
+            if ( $$token[0] eq '/namespaces' ) {
+                $state = 'in_siteinfo';
+                next;
+            }
 
-			if ($$token[0] ne 'namespace') {
-				die "$i: expected <namespace> or </namespaces>; got " . token2text($token);
-			}
+            if ( $$token[0] ne 'namespace' ) {
+                die "$i: expected <namespace> or </namespaces>; got "
+                  . token2text($token);
+            }
 
-			die "$i: key is a required attribute" unless
-				defined($key = $$token[1]->{key});
+            die "$i: key is a required attribute"
+              unless defined( $key = $$token[1]->{key} );
 
-			$token = $$buffer[++$i];
+            $token = $$buffer[ ++$i ];
 
-			#the default namespace has no text associated with it
-			if (ref $token eq 'SCALAR') {
-				$name = $$token;
-			} elsif ($$token[0] eq '/namespace') {
-				$name = '';
-				$i--; #move back one for below
-			} else {
-				die "$i: should never happen";	
-			}
+            #the default namespace has no text associated with it
+            if ( ref $token eq 'SCALAR' ) {
+                $name = $$token;
+            }
+            elsif ( $$token[0] eq '/namespace' ) {
+                $name = '';
+                $i--;    #move back one for below
+            }
+            else {
+                die "$i: should never happen";
+            }
 
-			push(@{$data{namespaces}}, [$key, $name]);
+            push( @{ $data{namespaces} }, [ $key, $name ] );
 
-			$token = $$buffer[++$i];
+            $token = $$buffer[ ++$i ];
 
-			if ($$token[0] ne '/namespace') {
-				$self->dump($buffer);
-				die "$i: expected </namespace> but got " . token2text($token);
-			}
+            if ( $$token[0] ne '/namespace' ) {
+                $self->dump($buffer);
+                die "$i: expected </namespace> but got " . token2text($token);
+            }
 
-		} else {
-			die "$i: unknown state '$state'";
-		}
-	}
+        }
+        else {
+            die "$i: unknown state '$state'";
+        }
+    }
 
-	$$self{HEAD} = \%data;
+    $$self{HEAD} = \%data;
 
-	#locate the anchor that indicates what looks like a link is really a 
-	#category assignment ([[foo]] vs [[Category:foo]])
-	#fix for bug #16616
-	foreach my $ns (@{$data{namespaces}}) {
-		#namespace 14 is the category namespace
-		if ($$ns[0] == 14) {
-			$$self{CATEGORY_ANCHOR} = $$ns[1];
-			last;
-		}
-	}
+    #locate the anchor that indicates what looks like a link is really a
+    #category assignment ([[foo]] vs [[Category:foo]])
+    #fix for bug #16616
+    foreach my $ns ( @{ $data{namespaces} } ) {
 
-	if (! defined($$self{CATEGORY_ANCHOR})) {
-		die "Could not locate category indicator in namespace definitions";
-	}
+        #namespace 14 is the category namespace
+        if ( $$ns[0] == 14 ) {
+            $$self{CATEGORY_ANCHOR} = $$ns[1];
+            last;
+        }
+    }
 
-	return 1;
+    if ( !defined( $$self{CATEGORY_ANCHOR} ) ) {
+        die "Could not locate category indicator in namespace definitions";
+    }
+
+    return 1;
 }
 
 #this function is very frightning =)
 sub parse_page {
-	my $self = shift;
-	my $buffer = shift;
-	my %data;
-	my $state = 'start';
+    my $self   = shift;
+    my $buffer = shift;
+    my %data;
+    my $state = 'start';
 
-	for (my $i = 0; $i <= $#$buffer; $i++) {
-		my $token = $$buffer[$i];
+    for ( my $i = 0 ; $i <= $#$buffer ; $i++ ) {
+        my $token = $$buffer[$i];
 
+        if ( $state eq 'start' ) {
+            if ( $$token[0] ne 'page' ) {
+                $self->dump($buffer);
+                die "$i: expected <page>; got " . token2text($token);
+            }
 
-		if ($state eq 'start') {
-			if ($$token[0] ne 'page') {
-				$self->dump($buffer);
-				die "$i: expected <page>; got " . token2text($token);
-			}
+            $state = 'in_page';
+        }
+        elsif ( $state eq 'in_page' ) {
+            next unless ref $token eq 'ARRAY';
+            if ( $$token[0] eq 'revision' ) {
+                $state = 'in_revision';
+                next;
+            }
+            elsif ( $$token[0] eq '/page' ) {
+                last;
+            }
+            elsif ( $$token[0] eq 'title' ) {
+                $token = $$buffer[ ++$i ];
 
-			$state = 'in_page';
-		} elsif ($state eq 'in_page') {
-			next unless ref $token eq 'ARRAY';
-			if ($$token[0] eq 'revision') {
-				$state = 'in_revision';
-				next;
-			} elsif ($$token[0] eq '/page') {
-				last;
-			} elsif ($$token[0] eq 'title') {
-				$token = $$buffer[++$i];
+                if ( ref $token eq 'ARRAY' && $$token[0] eq '/title' ) {
+                    $data{title} = '';
+                    next;
+                }
 
-				if (ref $token eq 'ARRAY' && $$token[0] eq '/title') {
-					$data{title} = '';
-					next;
-				}
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected TEXT; got " . token2text($token);
+                }
 
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected TEXT; got " . token2text($token);
-				}
+                $data{title} = $$token;
 
-				$data{title} = $$token;
+                $token = $$buffer[ ++$i ];
 
-				$token = $$buffer[++$i];
+                if ( $$token[0] ne '/title' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </title>; got " . token2text($token);
+                }
+            }
+            elsif ( $$token[0] eq 'id' ) {
+                $token = $$buffer[ ++$i ];
 
-				if ($$token[0] ne '/title') {
-					$self->dump($buffer);
-					die "$i: expected </title>; got " . token2text($token);
-				}
-			} elsif ($$token[0] eq 'id') {
-				$token = $$buffer[++$i];
-	
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected TEXT; got " . token2text($token);
-				}
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected TEXT; got " . token2text($token);
+                }
 
-				$data{id} = $$token;
+                $data{id} = $$token;
 
-				$token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				if ($$token[0] ne '/id') {
-					$self->dump($buffer);
-					die "$i: expected </id>; got " . token2text($token);
-				}
-			}
-		} elsif ($state eq 'in_revision') {
-			if ($$token[0] eq '/revision') {
-				#If a comprehensive dump file is parsed
-				#it can cause uncontrolled stack growth and the
-				#parser only returns one revision out of
-				#all revisions - if we run into a 
-				#comprehensive dump file, indicated by more
-				#than one <revision> section inside a <page>
-				#section then die with a message
+                if ( $$token[0] ne '/id' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </id>; got " . token2text($token);
+                }
+            }
+        }
+        elsif ( $state eq 'in_revision' ) {
+            if ( $$token[0] eq '/revision' ) {
 
-				#just peeking ahead, don't want to update
-				#the index
-				$token = $$buffer[$i + 1];
+                #If a comprehensive dump file is parsed
+                #it can cause uncontrolled stack growth and the
+                #parser only returns one revision out of
+                #all revisions - if we run into a
+                #comprehensive dump file, indicated by more
+                #than one <revision> section inside a <page>
+                #section then die with a message
 
-				if ($$token[0] eq 'revision') {
-					die "unable to properly parse comprehensive dump files";
-				}
+                #just peeking ahead, don't want to update
+                #the index
+                $token = $$buffer[ $i + 1 ];
 
-				$state = 'in_page';
-				next;	
-			} elsif ($$token[0] eq 'contributor') {
-				$state = 'in_contributor';
-				next;
-			} elsif ($$token[0] eq 'id') {
-				$token = $$buffer[++$i];
-	
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected TEXT; got " . token2text($token);
-				}
+                if ( $$token[0] eq 'revision' ) {
+                    die "unable to properly parse comprehensive dump files";
+                }
 
-				$data{revision_id} = $$token;
+                $state = 'in_page';
+                next;
+            }
+            elsif ( $$token[0] eq 'contributor' ) {
+                $state = 'in_contributor';
+                next;
+            }
+            elsif ( $$token[0] eq 'id' ) {
+                $token = $$buffer[ ++$i ];
 
-				$token = $$buffer[++$i];
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected TEXT; got " . token2text($token);
+                }
 
-				if ($$token[0] ne '/id') {
-					$self->dump($buffer);
-					die "$i: expected </id>; got " . token2text($token);
-				}
+                $data{revision_id} = $$token;
 
-			} elsif ($$token[0] eq 'timestamp') {
-				$token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected TEXT; got " . token2text($token);
-				}
+                if ( $$token[0] ne '/id' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </id>; got " . token2text($token);
+                }
 
-				$data{timestamp} = $$token;
+            }
+            elsif ( $$token[0] eq 'timestamp' ) {
+                $token = $$buffer[ ++$i ];
 
-				$token = $$buffer[++$i];
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected TEXT; got " . token2text($token);
+                }
 
-				if ($$token[0] ne '/timestamp') {
-					$self->dump($buffer);
-					die "$i: expected </timestamp>; got " . token2text($token);
-				}
-			} elsif ($$token[0] eq 'minor') {
-				$data{minor} = 1;
-				$token = $$buffer[++$i];
+                $data{timestamp} = $$token;
 
-				if ($$token[0] ne '/minor') {
-					$self->dump($buffer);
-					die "$i: expected </minor>; got " . token2text($token);
-				}
-			} elsif ($$token[0] eq 'comment') {
-				$token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				#account for possible null-text 
-				if (ref $token eq 'ARRAY' && $$token[0] eq '/comment') {
-					$data{comment} = '';
-					next;
-				}
+                if ( $$token[0] ne '/timestamp' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </timestamp>; got " . token2text($token);
+                }
+            }
+            elsif ( $$token[0] eq 'minor' ) {
+                $data{minor} = 1;
+                $token = $$buffer[ ++$i ];
 
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected TEXT; got " . token2text($token);
-				}
+                if ( $$token[0] ne '/minor' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </minor>; got " . token2text($token);
+                }
+            }
+            elsif ( $$token[0] eq 'comment' ) {
+                $token = $$buffer[ ++$i ];
 
-				$data{comment} = $$token;
+                #account for possible null-text
+                if ( ref $token eq 'ARRAY' && $$token[0] eq '/comment' ) {
+                    $data{comment} = '';
+                    next;
+                }
 
-				$token = $$buffer[++$i];
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected TEXT; got " . token2text($token);
+                }
 
-				if ($$token[0] ne '/comment') {
-					$self->dump($buffer);
-					die "$i: expected </comment>; got " . token2text($token);
-				}
+                $data{comment} = $$token;
 
-			} elsif ($$token[0] eq 'text') {
-				my $token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				if (ref $token eq 'ARRAY' && $$token[0] eq '/text') {
-					${$data{text}} = '';
-					next;
-				} elsif (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expected TEXT; got " . token2text($token);
-				}
+                if ( $$token[0] ne '/comment' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </comment>; got " . token2text($token);
+                }
 
-				$data{text} = $token;
+            }
+            elsif ( $$token[0] eq 'text' ) {
+                my $token = $$buffer[ ++$i ];
 
-				$token = $$buffer[++$i];
+                if ( ref $token eq 'ARRAY' && $$token[0] eq '/text' ) {
+                    ${ $data{text} } = '';
+                    next;
+                }
+                elsif ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expected TEXT; got " . token2text($token);
+                }
 
-				if ($$token[0] ne '/text') {
-					$self->dump($buffer);
-					die "$i: expected </text>; got " . token2text($token);
-				}
-			
-			}
+                $data{text} = $token;
 
-		} elsif ($state eq 'in_contributor') {
-			next unless ref $token eq 'ARRAY';
-			if ($$token[0] eq '/contributor') {
-				$state = 'in_revision';
-				next;
-			} elsif (ref $token eq 'ARRAY' && $$token[0] eq 'username') {
-				$token = $$buffer[++$i];
+                $token = $$buffer[ ++$i ];
 
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expecting TEXT; got " . token2text($token);
-				}
+                if ( $$token[0] ne '/text' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </text>; got " . token2text($token);
+                }
 
-				$data{username} = $$token;
+            }
 
-				$token = $$buffer[++$i];
+        }
+        elsif ( $state eq 'in_contributor' ) {
+            next unless ref $token eq 'ARRAY';
+            if ( $$token[0] eq '/contributor' ) {
+                $state = 'in_revision';
+                next;
+            }
+            elsif ( ref $token eq 'ARRAY' && $$token[0] eq 'username' ) {
+                $token = $$buffer[ ++$i ];
 
-				if ($$token[0] ne '/username') {
-					$self->dump($buffer);
-					die "$i: expected </username>; got " . token2text($token);
-				}
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expecting TEXT; got " . token2text($token);
+                }
 
-			} elsif ($$token[0] eq 'id') {
-				$token = $$buffer[++$i];
-				
-				if (ref $token ne 'SCALAR') {
-					$self->dump($buffer);
-					die "$i: expecting TEXT; got " . token2text($token);
-				}
+                $data{username} = $$token;
 
-				$data{userid} = $$token;
+                $token = $$buffer[ ++$i ];
 
-				$token = $$buffer[++$i];
+                if ( $$token[0] ne '/username' ) {
+                    $self->dump($buffer);
+                    die "$i: expected </username>; got " . token2text($token);
+                }
 
-				if ($$token[0] ne '/id') {
-					$self->dump($buffer);
-					die "$i: expecting </id>; got " . token2text($token);
-				}
-			}
-		} else {
-			die "unknown state: $state";
-		}
-	}
+            }
+            elsif ( $$token[0] eq 'id' ) {
+                $token = $$buffer[ ++$i ];
 
-	$data{minor} = 0 unless defined($data{minor});
+                if ( ref $token ne 'SCALAR' ) {
+                    $self->dump($buffer);
+                    die "$i: expecting TEXT; got " . token2text($token);
+                }
 
-	return \%data;
+                $data{userid} = $$token;
+
+                $token = $$buffer[ ++$i ];
+
+                if ( $$token[0] ne '/id' ) {
+                    $self->dump($buffer);
+                    die "$i: expecting </id>; got " . token2text($token);
+                }
+            }
+        }
+        else {
+            die "unknown state: $state";
+        }
+    }
+
+    $data{minor} = 0 unless defined( $data{minor} );
+
+    return \%data;
 }
 
 #private functions with out OO interface
 sub make_good_tags {
-	return {
-		sitename => 1,
-		base => 1,
-		generator => 1,
-		case => 1,
-		namespace => 1,
-		title => 1,
-		id => 1,
-		timestamp => 1,
-		username => 1,
-		comment => 1,
-		text => 1
-	};
+    return {
+        sitename  => 1,
+        base      => 1,
+        generator => 1,
+        case      => 1,
+        namespace => 1,
+        title     => 1,
+        id        => 1,
+        timestamp => 1,
+        username  => 1,
+        comment   => 1,
+        text      => 1
+    };
 }
 
 sub token2text {
-	my $token = shift;
+    my $token = shift;
 
-	if (ref $token eq 'ARRAY') {
-		return "<$$token[0]>";
-	} elsif (ref $token eq 'SCALAR') {
-		return "!text_token!";
-	} else {
-		return "!unknown!";
-	}
+    if ( ref $token eq 'ARRAY' ) {
+        return "<$$token[0]>";
+    }
+    elsif ( ref $token eq 'SCALAR' ) {
+        return "!text_token!";
+    }
+    else {
+        return "!unknown!";
+    }
 }
 
 #this function is where the majority of time is spent in this software
@@ -673,43 +712,44 @@ sub token2text {
 #}
 
 sub start_handler {
-	my ($p, $tag, %atts) = @_;	
-	my $self = $p->{state};
-	my $good_tags = $self->{GOOD_TAGS};
+    my ( $p, $tag, %atts ) = @_;
+    my $self      = $p->{state};
+    my $good_tags = $self->{GOOD_TAGS};
 
-	push @{ $self->{BUFFER} }, [$tag, \%atts];
+    push @{ $self->{BUFFER} }, [ $tag, \%atts ];
 
-	if (defined($good_tags->{$tag})) {
-		$p->setHandlers(Char => \&char_handler);
-	}
+    if ( defined( $good_tags->{$tag} ) ) {
+        $p->setHandlers( Char => \&char_handler );
+    }
 
-	return 1;
+    return 1;
 }
 
 sub end_handler {
-	my ($p, $tag) = @_;
-	my $self = $p->{state};
+    my ( $p, $tag ) = @_;
+    my $self = $p->{state};
 
-	push @{ $self->{BUFFER} }, ["/$tag"];
+    push @{ $self->{BUFFER} }, ["/$tag"];
 
-	$p->setHandlers(Char => undef);
-	
-	return 1;
+    $p->setHandlers( Char => undef );
+
+    return 1;
 }
 
 sub char_handler {
-	my ($p, $chars) = @_;
-	my $self = $p->{state};
-	my $buffer = $$self{BUFFER};
-	my $curent = $$buffer[-1];
+    my ( $p, $chars ) = @_;
+    my $self   = $p->{state};
+    my $buffer = $$self{BUFFER};
+    my $curent = $$buffer[-1];
 
-	if (ref $curent eq 'SCALAR') {
-		$$curent .= $chars;
-	} elsif (substr($$curent[0], 0, 1) ne '/') {
-		push(@$buffer, \$chars);
-	} 
+    if ( ref $curent eq 'SCALAR' ) {
+        $$curent .= $chars;
+    }
+    elsif ( substr( $$curent[0], 0, 1 ) ne '/' ) {
+        push( @$buffer, \$chars );
+    }
 
-	return 1;
+    return 1;
 }
 
 package Parse::MediaWikiDump::page;
@@ -718,111 +758,113 @@ use strict;
 use warnings;
 
 sub new {
-	my ($class, $data, $category_anchor, $case_setting) = @_; 
-	my $self = {};
+    my ( $class, $data, $category_anchor, $case_setting ) = @_;
+    my $self = {};
 
-	bless($self, $class);
+    bless( $self, $class );
 
-	$$self{DATA} = $data;
-	$$self{CACHE} = {};
-	$$self{CATEGORY_ANCHOR} = $category_anchor;
+    $$self{DATA}            = $data;
+    $$self{CACHE}           = {};
+    $$self{CATEGORY_ANCHOR} = $category_anchor;
 
-	return $self;
+    return $self;
 }
 
 sub namespace {
-	my $self = shift;
+    my $self = shift;
 
-	return $$self{CACHE}{namespace} if defined($$self{CACHE}{namespace});
+    return $$self{CACHE}{namespace} if defined( $$self{CACHE}{namespace} );
 
-	my $title = $$self{DATA}{title};
+    my $title = $$self{DATA}{title};
 
-	if ($title =~ m/^([^:]+)\:/) {
-		$$self{CACHE}{namespace} = $1;
-		return $1;
-	} else {
-		$$self{CACHE}{namespace} = '';
-		return '';
-	}
+    if ( $title =~ m/^([^:]+)\:/ ) {
+        $$self{CACHE}{namespace} = $1;
+        return $1;
+    }
+    else {
+        $$self{CACHE}{namespace} = '';
+        return '';
+    }
 }
 
 sub categories {
-	my $self = shift;
-	my $anchor = $$self{CATEGORY_ANCHOR};
+    my $self   = shift;
+    my $anchor = $$self{CATEGORY_ANCHOR};
 
-	return $$self{CACHE}{categories} if defined($$self{CACHE}{categories});
+    return $$self{CACHE}{categories} if defined( $$self{CACHE}{categories} );
 
-	my $text = $$self{DATA}{text};
-	my @cats;
-	
-	while($$text =~ m/\[\[$anchor:\s*([^\]]+)\]\]/gi) {
-		my $buf = $1;
+    my $text = $$self{DATA}{text};
+    my @cats;
 
-		#deal with the pipe trick
-		$buf =~ s/\|.*$//;
-		push(@cats, $buf);
-	}
+    while ( $$text =~ m/\[\[$anchor:\s*([^\]]+)\]\]/gi ) {
+        my $buf = $1;
 
-	return undef if scalar(@cats) == 0;
+        #deal with the pipe trick
+        $buf =~ s/\|.*$//;
+        push( @cats, $buf );
+    }
 
-	$$self{CACHE}{categories} = \@cats;
+    return undef if scalar(@cats) == 0;
 
-	return \@cats;
+    $$self{CACHE}{categories} = \@cats;
+
+    return \@cats;
 }
 
 sub redirect {
-	my $self = shift;
-	my $text = $$self{DATA}{text};
+    my $self = shift;
+    my $text = $$self{DATA}{text};
 
-	return $$self{CACHE}{redirect} if exists($$self{CACHE}{redirect});
+    return $$self{CACHE}{redirect} if exists( $$self{CACHE}{redirect} );
 
-	if ($$text =~ m/^#redirect\s*:?\s*\[\[([^\]]*)\]\]/i) {
-		$$self{CACHE}{redirect} = $1;
-		return $1;
-	} else {
-		$$self{CACHE}{redirect} = undef;
-		return undef;
-	}
+    if ( $$text =~ m/^#redirect\s*:?\s*\[\[([^\]]*)\]\]/i ) {
+        $$self{CACHE}{redirect} = $1;
+        return $1;
+    }
+    else {
+        $$self{CACHE}{redirect} = undef;
+        return undef;
+    }
 }
 
 sub title {
-	my $self = shift;
-	return $$self{DATA}{title};
+    my $self = shift;
+    return $$self{DATA}{title};
 }
 
 sub id {
-	my $self = shift;
-	return $$self{DATA}{id};
+    my $self = shift;
+    return $$self{DATA}{id};
 }
 
 sub revision_id {
-	my $self = shift;
-	return $$self{DATA}{revision_id};
+    my $self = shift;
+    return $$self{DATA}{revision_id};
 }
 
 sub timestamp {
-	my $self = shift;
-	return $$self{DATA}{timestamp};
+    my $self = shift;
+    return $$self{DATA}{timestamp};
 }
 
 sub username {
-	my $self = shift;
-	return $$self{DATA}{username};
+    my $self = shift;
+    return $$self{DATA}{username};
 }
 
 sub userid {
-	my $self = shift;
-	return $$self{DATA}{userid};
+    my $self = shift;
+    return $$self{DATA}{userid};
 }
 
 sub minor {
-	my $self = shift;
-	return $$self{DATA}{minor};
+    my $self = shift;
+    return $$self{DATA}{minor};
 }
 
 sub text {
-	my $self = shift;
-	return $$self{DATA}{text};
+    my $self = shift;
+    return $$self{DATA}{text};
 }
 
 package Parse::MediaWikiDump::Links;
@@ -831,127 +873,127 @@ use strict;
 use warnings;
 
 sub new {
-	my $class = shift;
-	my $source = shift;
-	my $self = {};
-	$$self{BUFFER} = [];
+    my $class  = shift;
+    my $source = shift;
+    my $self   = {};
+    $$self{BUFFER} = [];
 
-	bless($self, $class);
+    bless( $self, $class );
 
-	$self->open($source);
-	$self->init;
+    $self->open($source);
+    $self->init;
 
-	return $self;
+    return $self;
 }
 
 sub next {
-	my $self = shift;
-	my $buffer = $$self{BUFFER};
-	my $link;
+    my $self   = shift;
+    my $buffer = $$self{BUFFER};
+    my $link;
 
-	while(1) {
-		if (defined($link = pop(@$buffer))) {
-			last;
-		}
+    while (1) {
+        if ( defined( $link = pop(@$buffer) ) ) {
+            last;
+        }
 
-		#signals end of input
-		return undef unless $self->parse_more;
-	}
+        #signals end of input
+        return undef unless $self->parse_more;
+    }
 
-	return Parse::MediaWikiDump::link->new($link);
+    return Parse::MediaWikiDump::link->new($link);
 }
 
 #private functions with OO interface
 sub parse_more {
-	my $self = shift;
-	my $source = $$self{SOURCE};
-	my $need_data = 1;
-	
-	while($need_data) {
-		my $line = <$source>;
+    my $self      = shift;
+    my $source    = $$self{SOURCE};
+    my $need_data = 1;
 
-		last unless defined($line);
+    while ($need_data) {
+        my $line = <$source>;
 
-		while($line =~ m/\((\d+),(-?\d+),'(.*?)'\)[;,]/g) {
-			push(@{$$self{BUFFER}}, [$1, $2, $3]);
-			$need_data = 0;
-		}
-	}
+        last unless defined($line);
 
-	#if we still need data and we are here it means we ran out of input
-	if ($need_data) {
-		return 0;
-	}
-	
-	return 1;
+        while ( $line =~ m/\((\d+),(-?\d+),'(.*?)'\)[;,]/g ) {
+            push( @{ $$self{BUFFER} }, [ $1, $2, $3 ] );
+            $need_data = 0;
+        }
+    }
+
+    #if we still need data and we are here it means we ran out of input
+    if ($need_data) {
+        return 0;
+    }
+
+    return 1;
 }
 
 sub open {
-	my $self = shift;
-	my $source = shift;
+    my $self   = shift;
+    my $source = shift;
 
-	if (ref($source) ne 'GLOB') {
-		die "could not open $source: $!" unless
-			open($$self{SOURCE}, $source);
-	} else {
-		$$self{SOURCE} = $source;
-	}
+    if ( ref($source) ne 'GLOB' ) {
+        die "could not open $source: $!"
+          unless open( $$self{SOURCE}, $source );
+    }
+    else {
+        $$self{SOURCE} = $source;
+    }
 
-	binmode($$self{SOURCE}, ':utf8');
+    binmode( $$self{SOURCE}, ':utf8' );
 
-	return 1;
+    return 1;
 }
 
 sub init {
-	my $self = shift;
-	my $source = $$self{SOURCE};
-	my $found = 0;
-	
-	while(<$source>) {
-		if (m/^LOCK TABLES `.*pagelinks` WRITE;/) {
-			$found = 1;
-			last;
-		}
-	}
+    my $self   = shift;
+    my $source = $$self{SOURCE};
+    my $found  = 0;
 
-	die "not a MediaWiki link dump file" unless $found;
+    while (<$source>) {
+        if (m/^LOCK TABLES `.*pagelinks` WRITE;/) {
+            $found = 1;
+            last;
+        }
+    }
+
+    die "not a MediaWiki link dump file" unless $found;
 }
 
 #depreciated backwards compatibility methods
 
 #replaced by next()
 sub link {
-	my $self = shift;
-	$self->next(@_);
+    my $self = shift;
+    $self->next(@_);
 }
 
 package Parse::MediaWikiDump::link;
 
 #you must pass in a fully populated link array reference
 sub new {
-	my $class = shift;
-	my $self = shift;
+    my $class = shift;
+    my $self  = shift;
 
-	bless($self, $class);
+    bless( $self, $class );
 
-	return $self;
+    return $self;
 }
 
 sub from {
-	my $self = shift;
-	return $$self[0];
+    my $self = shift;
+    return $$self[0];
 }
 
 sub namespace {
-	my $self = shift;
-	return $$self[1];
+    my $self = shift;
+    return $$self[1];
 }
 
 sub to {
-	my $self = shift;
-	return $$self[2];
+    my $self = shift;
+    return $$self[2];
 }
-
 
 1;
 
