@@ -116,6 +116,7 @@ Sponsored by <a href="http://www.schenck-rotec.net"><img src="%ATTACHURLPATH%/sc
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  01 Oct 2012 | fixed charset encoding |
 |  19 Feb 2009 | converted to Foswiki extension |
 |  20 Jul 2007 | initial release |
 |  Dependencies: | %$DEPENDENCIES% |
